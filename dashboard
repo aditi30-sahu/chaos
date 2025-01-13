@@ -1,0 +1,302 @@
+import React, { useEffect, useState } from "react";
+import DashboardCard from "./DashboardCard";
+import {
+  Box,
+  CircularProgress,
+  FormControl,
+  Grid,
+  MenuItem,
+  Select,
+  SelectChangeEvent,
+  Typography,
+  Paper,
+} from "@mui/material";
+import TotalExecution from "@/public/svg/TotalExecution.svg";
+import SuccessfultestsIcon from "@/public/svg/SuccessfultestsIcon.svg";
+import FailedtestsIcon from "@/public/svg/FailedtestsIcon.svg";
+import AvailabilityIcon from "@/public/svg/AvailabilityIcon.svg";
+import api from "@/utils/api";
+import SimpleLineChart from "./SimpleLineCharts";
+import { DashboardCardStats } from "@/DTO/DashboardCardStats";
+
+interface DashboardDProps {
+  displayName: string;
+}
+
+const DashboardD: React.FC<DashboardDProps> = ({ displayName }) => {
+  const [uaidOptions, setUaidOptions] = useState([""]);
+  const [loading, setLoading] = useState(true);
+  const [executionHistoryRecords, setExecutionHistoryRecords] = useState([]);
+  const [cardStats, setCardStats] = useState<DashboardCardStats>({
+    totalYaml: 0,
+    successYamls: 0,
+    failedYamls: 0,
+    availabilityScore: 0,
+  });
+
+  const [uaid, setUaid] = useState("");
+  const [period, setPeriod] = useState("Last Week");
+  const [filteredYamls, setFilteredYamls] = useState(executionHistoryRecords);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const callDashboardDataAPI = async (
+    executionHistoryUrl: string,
+    cardStatsUrl: string
+  ) => {
+    try {
+      const response = await api.get(executionHistoryUrl);
+      setExecutionHistoryRecords(response.data);
+      setFilteredYamls(response.data);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+
+    try {
+      const response = await api.get(cardStatsUrl);
+      setCardStats(response.data);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  const handleUaidChange = async (event: SelectChangeEvent) => {
+    setUaid(event.target.value);
+    const executionHistoryUrl =
+      process.env.NEXT_PUBLIC_GETEXECUTIONHISTORYRECORDS! +
+      event.target.value +
+      "&period=" +
+      period;
+
+    const cardStatsUrl =
+      process.env.NEXT_PUBLIC_GETDASHBOARDCARDSTATS! +
+      event.target.value +
+      "&period=" +
+      period;
+
+    callDashboardDataAPI(executionHistoryUrl, cardStatsUrl);
+  };
+
+  const handleDateChange = (event: SelectChangeEvent) => {
+    setPeriod(event.target.value);
+    const executionHistoryUrl =
+      process.env.NEXT_PUBLIC_GETEXECUTIONHISTORYRECORDS! +
+      uaid +
+      "&period=" +
+      event.target.value;
+
+    const cardStatsUrl =
+      process.env.NEXT_PUBLIC_GETDASHBOARDCARDSTATS! +
+      uaid +
+      "&period=" +
+      event.target.value;
+
+    callDashboardDataAPI(executionHistoryUrl, cardStatsUrl);
+  };
+
+  useEffect(() => {
+    const id = localStorage.getItem("loggedInUser");
+
+    const fetchUAIDs = async () => {
+      try {
+        const url = process.env.NEXT_PUBLIC_GETUAIDS! + id;
+        const response = await api.get(url);
+        setUaidOptions(response.data);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUAIDs();
+  }, []);
+
+  // useEffect(() => {
+  //   if (searchTerm === "") {
+  //     setFilteredYamls(executionHistoryRecords);
+  //   } else {
+  //     setFilteredYamls(
+  //       executionHistoryRecords.filter((yaml) =>
+  //         yaml.yamlName.toLowerCase().includes(searchTerm.toLowerCase())
+  //       )
+  //     );
+  //   }
+  // }, [searchTerm, executionHistoryRecords]);
+
+  useEffect(() => {
+    const fetchAllExecutionHistoryData = async () => {
+      try {
+        const url = process.env.NEXT_PUBLIC_GET_ALL_EXECUTIONS!;
+        const response = await api.get(url);
+        setExecutionHistoryRecords(response.data);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAllExecutionHistoryData();
+  }, []);
+
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+        }}
+      >
+        <CircularProgress />
+        <div>Loading...</div>
+      </Box>
+    );
+  }
+
+  return (
+    <>
+      <Grid container sx={{ marginTop: 4, marginBottom: 2 }}>
+        <div>
+          <div className="text-xl h1">Dashboard</div>
+        </div>
+        <Paper sx={{ borderTop: "2px solid #ff6600" }}>
+          <div className="container mx-auto p-1">
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <div className="text-lg h1 pl-2">Analytics</div>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Grid container spacing={2}>
+                  <Grid item xs={6} md={6}>
+                    <Box sx={{ maxWidth: 224 }}>
+                      <FormControl fullWidth>
+                        <Typography
+                          variant="subtitle1"
+                          sx={{ mt: 1, color: "#64748B", fontSize: "0.875rem" }}
+                        >
+                          Filter by UAID
+                        </Typography>
+                        <Select
+                          value={uaid}
+                          onChange={handleUaidChange}
+                          renderValue={(selected) => selected || "Select UAID"}
+                          sx={{ height: 30 }}
+                        >
+                          {uaidOptions.map((option) => (
+                            <MenuItem key={option} value={option}>
+                              {option}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={6} md={6}>
+                    <Box sx={{ maxWidth: 224 }}>
+                      <FormControl fullWidth>
+                        <Typography
+                          variant="subtitle1"
+                          sx={{ mt: 1, color: "#64748B", fontSize: "0.875rem" }}
+                        >
+                          Filter by Date
+                        </Typography>
+                        <Select
+                          value={period}
+                          onChange={handleDateChange}
+                          renderValue={(selected) => selected || "Select Date"}
+                          sx={{ height: 30 }}
+                        >
+                          {[
+                            "Today",
+                            "Last Week",
+                            "Last Month",
+                            "Quarterly",
+                            "Yearly",
+                          ].map((option) => (
+                            <MenuItem key={option} value={option}>
+                              {option}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Grid>
+            </Grid>
+
+            <Grid
+              container
+              spacing={2}
+              direction="row"
+              justifyContent="center"
+              alignItems="center"
+            >
+              <Grid
+                item
+                xs={12}
+                sx={{ marginTop: 2 }}
+                container
+                direction="row"
+                justifyContent="space-around"
+                alignItems="center"
+              >
+                <Grid item lg={2.8} sm={5} xs={8}>
+                  <DashboardCard
+                    title="TOTAL EXECUTION"
+                    value={cardStats?.totalYaml || 0}
+                    percentage="0"
+                    icon={<TotalExecution />}
+                  />
+                </Grid>
+                <Grid item lg={2.8} sm={5} xs={8}>
+                  <DashboardCard
+                    title="SUCCESSFUL TESTS"
+                    value={cardStats?.successYamls || 0}
+                    percentage={
+                      ((
+                        (cardStats?.successYamls / cardStats?.totalYaml) *
+                        100
+                      ).toFixed(2) || "0") + "%"
+                    }
+                    icon={<SuccessfultestsIcon />}
+                  />
+                </Grid>
+
+                <Grid item lg={2.8} sm={5} xs={8}>
+                  <DashboardCard
+                    title="FAILED TESTS"
+                    value={cardStats?.failedYamls || 0}
+                    percentage={
+                      ((
+                        (cardStats?.failedYamls / cardStats?.totalYaml) *
+                        100
+                      ).toFixed(2) || "0") + "%"
+                    }
+                    icon={<FailedtestsIcon />}
+                  />
+                </Grid>
+                <Grid item lg={2.8} sm={5} xs={8}>
+                  <DashboardCard
+                    title="AVAILABALITY SCORE"
+                    value={cardStats?.availabilityScore || 0}
+                    percentage="98%"
+                    icon={<AvailabilityIcon />}
+                  />
+                </Grid>
+              </Grid>
+
+              <Grid item xs={12}>
+                <div className="container mx-auto p-2">
+                  <SimpleLineChart />
+                </div>
+              </Grid>
+            </Grid>
+          </div>
+        </Paper>
+      </Grid>
+    </>
+  );
+};
+export default DashboardD;
