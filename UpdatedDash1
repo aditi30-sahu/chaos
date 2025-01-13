@@ -1,0 +1,106 @@
+import React from 'react';
+import { Card, CardContent } from "@/components/ui/card";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { TrendingUp } from 'lucide-react';
+
+const MetricCard = ({ title, value, color, graph = false, data = [] }) => {
+  return (
+    <Card className="bg-gray-900 text-white">
+      <CardContent className="p-4">
+        <div className="mb-2 text-sm text-gray-400">{title}</div>
+        <div className={`text-4xl font-bold ${color}`}>{value}</div>
+        {graph && (
+          <div className="h-16 mt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data}>
+                <Line 
+                  type="monotone" 
+                  dataKey="amount" 
+                  stroke="#8884d8" 
+                  dot={false}
+                  strokeWidth={2}
+                />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1f2937', border: 'none' }}
+                  labelStyle={{ color: '#9ca3af' }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+const Dashboard = () => {
+  // Sample data for the graphs
+  const sampleData = [
+    { timestamp: '09:00', amount: 30000 },
+    { timestamp: '10:00', amount: 35000 },
+    { timestamp: '11:00', amount: 32000 },
+    { timestamp: '12:00', amount: 40000 },
+    { timestamp: '13:00', amount: 38000 },
+    { timestamp: '14:00', amount: 42000 },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gray-950 p-6">
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-2xl font-bold text-white mb-6">Financial Metrics Dashboard</h1>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Volume Metrics */}
+          <MetricCard 
+            title="Zelle - Incoming Credit Volume"
+            value="991"
+            color="text-yellow-400"
+            graph={true}
+            data={sampleData}
+          />
+          
+          {/* Success Rate Metrics */}
+          <MetricCard 
+            title="Zelle - Incoming Credit Success Rate"
+            value="99.2%"
+            color="text-blue-400"
+          />
+          
+          {/* Amount Metrics */}
+          <MetricCard 
+            title="Zelle - Incoming Credit Amount"
+            value="$393k"
+            color="text-yellow-500"
+            graph={true}
+            data={sampleData}
+          />
+          
+          {/* TransferNow Metrics */}
+          <MetricCard 
+            title="TransferNow - Volume"
+            value="992"
+            color="text-yellow-400"
+            graph={true}
+            data={sampleData}
+          />
+          
+          <MetricCard 
+            title="TransferNow - Success Rate"
+            value="97.7%"
+            color="text-blue-400"
+          />
+          
+          <MetricCard 
+            title="TransferNow - Amount"
+            value="$528k"
+            color="text-yellow-500"
+            graph={true}
+            data={sampleData}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
