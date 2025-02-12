@@ -3,152 +3,255 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Checkbox,
+  Radio,
   FormControl,
   Typography,
   Grid,
-  Stack,
   Box,
+  TextField,
+  useTheme,
+  useMediaQuery,
+  Paper,
+  RadioGroup,
+  FormControlLabel,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  Alert,
+  IconButton,
+  Tooltip
 } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import styles from '../ActionComponent/ActionComponent.module.css'
 
-const names = [
+interface ActionData {
+  key: number;
+  displayName: string;
+  actionName: string;
+  actions: string[];
+}
+
+interface TableEntry {
+  id: string;
+  timestamp: string;
+  actionType: string;
+  [key: string]: string;
+}
+
+const names: ActionData[] = [
   {
     key: 1,
     displayName: "Add Stress",
     actionName: "cloudActionStress",
-    actions: [
-      "subscription",
-      "resourceGroup",
-      "resource",
-      "timeout",
-      "cpu",
-      "io",
-      "memory",
-    ],
+    actions: ["subscription", "resourceGroup", "resource", "timeout", "cpu", "io", "memory"],
   },
   {
     key: 2,
     displayName: "Injecting latency on services",
     actionName: "proxyActionLatency",
-    actions: [
-      "namespace",
-      "selector",
-      "port",
-      "port-type",
-      "url",
-      "type",
-      "secret",
-      "key",
-      "value",
-    ],
+    actions: ["namespace", "selector", "port", "port-type", "url", "type", "secret", "key", "value"],
   },
-  {
-    key: 3,
-    displayName: "Injecting timeout on services",
-    actionName: "proxyActionTimeout",
-    actions: [],
-  },
-  {
-    key: 4,
-    displayName: "Scaling down Pods",
-    actionName: "podScaleDown",
-    actions: ["server", "namespace", "selector", "status", "replicas"],
-  },
-  {
-    key: 5,
-    displayName: "Scaling up Pods",
-    actionName: "podaction",
-    actions: [],
-  },
+  // ... other actions
 ];
 
-const ActionComponent = () => {
+const ActionComponent: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
   const [selected, setSelected] = React.useState<string | null>(null);
-  const [formData, setFormData] = React.useState<{
-    [key: string]: { [key: string]: string };
-  }>({});
+  const [formData, setFormData] = React.useState<{ [key: string]: string }>({});
+  const [tableData, setTableData] = React.useState<TableEntry[]>([]);
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(5);
+  const [alert, setAlert] = React.useState<{ type: 'success' | 'error', message: string } | null>(null);
 
-  const handleToggle = (displayName: string) => () => {
-    setSelected(displayName === selected ? null : displayName);
-    if (displayName !== selected) {
-      setFormData(prevState => {
-        const newState = { ...prevState };
-        delete newState[displayName];
-        return newState;
-      });
-    }
+  const handleRadioChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = event.target.value;
+    setSelected(newValue);
+    setFormData({}); // Reset form when changing action
   };
 
-  const handleInputChange =
-    (displayName: string, action: string) =>
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const newFormData = { ...formData };
-      newFormData[displayName] = { [action]: event.target.value };
-      setFormData(newFormData);
+  const handleInputChange = (action: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({
+      ...prev,
+      [action]: event.target.value
+    }));
+  };
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    
+    if (!selected) {
+      setAlert({ type: 'error', message: 'Please select an action type' });
+      return;
+    }
+
+    const selectedAction = names.find(name => name.displayName === selected);
+    if (!selectedAction) return;
+
+    // Validate required fields
+    const missingFields = selectedAction.actions.filter(action => !formData[action]);
+    if (missingFields.length > 0) {
+      setAlert({ type: 'error', message: `Please fill in: ${missingFields.join(', ')}` });
+      return;
+    }
+
+    // Add new entry to table
+    const newEntry: TableEntry = {
+      id: Date.now().toString(),
+      timestamp: new Date().toLocaleString(),
+      actionType: selected,
+      ...formData
     };
 
+    setTableData(prev => [newEntry, ...prev]);
+    setFormData({}); // Reset form after submission
+    setAlert({ type: 'success', message: 'Entry added successfully' });
+  };
+
+  const handleDelete = (id: string) => {
+    setTableData(prev => prev.filter(entry => entry.id !== id));
+    setAlert({ type: 'success', message: 'Entry deleted successfully' });
+  };
+
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const selectedActionData = names.find(name => name.displayName === selected);
+
   return (
-    <div>
-      <FormControl className={styles.form}>
-        {names.map((name) => (
-          <Accordion key={name.key}>
-            <AccordionSummary
-              expandIcon={<ExpandMoreIcon />}
-              aria-controls={`panel-${name.key}-content`}
-              id={`panel-${name.key}-header`}
+    <Box sx={{ p: 2, maxWidth: 1400, margin: '0 auto' }}>
+      <Grid container spacing={2}>
+        {/* Left Panel - Radio Buttons */}
+        <Grid item xs={12} md={3}>
+          <Paper elevation={1} sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Select Action
+            </Typography>
+            <RadioGroup value={selected || ''} onChange={handleRadioChange}>
+              {names.map((name) => (
+                <FormControlLabel
+                  key={name.key}
+                  value={name.displayName}
+                  control={<Radio />}
+                  label={name.displayName}
+                />
+              ))}
+            </RadioGroup>
+          </Paper>
+        </Grid>
+
+        {/* Right Panel - Form and Table */}
+        <Grid item xs={12} md={9}>
+          {/* Alert Messages */}
+          {alert && (
+            <Alert 
+              severity={alert.type} 
+              onClose={() => setAlert(null)}
+              sx={{ mb: 2 }}
             >
-              <Stack direction="row" alignItems="center">
-              <Checkbox
-                edge="start"
-                checked={name.displayName === selected}
-                tabIndex={-1}
-                disableRipple
-                inputProps={{
-                  "aria-labelledby": `checkbox-list-label-${name.key}`,
-                }}
-                onClick={handleToggle(name.displayName)}
-              />
-              <Typography>{name.displayName}</Typography>
-              </Stack>
-            </AccordionSummary>
-            <AccordionDetails>
-              {name.displayName === selected && (
-                <Grid container spacing={1}>
-                  {name.actions.map((action) => (
-                    <Grid item xs={6} key={action}>
-                      <Box display="flex" alignItems="center" >
-                        <Grid item xs={2}>
-                          <label
-                            htmlFor={`${name.displayName}-${action}`}
-                            className="mr-2"
-                          >
-                            {action}:
-                          </label>
-                        </Grid>
-                        <Grid item xs={8}>
-                          <input
-                            className= {`form-control ${styles.customInput} `}
-                            type="text"
-                            id={`${name.displayName}-${action}`}
-                            value={formData[name.displayName]?.[action] || ""}
-                            onChange={handleInputChange(
-                              name.displayName,
-                              action
-                            )}
-                          />
-                        </Grid>
-                      </Box>
-                    </Grid>
-                  ))}
+              {alert.message}
+            </Alert>
+          )}
+
+          {/* Form Section */}
+          <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Add New Entry
+            </Typography>
+            <form onSubmit={handleSubmit}>
+              <Grid container spacing={2}>
+                {selectedActionData?.actions.map((action) => (
+                  <Grid item xs={12} sm={6} md={4} key={action}>
+                    <TextField
+                      fullWidth
+                      label={action}
+                      value={formData[action] || ''}
+                      onChange={handleInputChange(action)}
+                      size={isMobile ? "small" : "medium"}
+                    />
+                  </Grid>
+                ))}
+                <Grid item xs={12}>
+                  <Button 
+                    type="submit" 
+                    variant="contained" 
+                    color="primary"
+                    sx={{ mt: 2 }}
+                  >
+                    Add Entry
+                  </Button>
                 </Grid>
-              )}
-            </AccordionDetails>
-          </Accordion>
-        ))}
-      </FormControl>
-    </div>
+              </Grid>
+            </form>
+          </Paper>
+
+          {/* Table Section */}
+          <Paper elevation={1} sx={{ width: '100%' }}>
+            <TableContainer>
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Timestamp</TableCell>
+                    <TableCell>Action Type</TableCell>
+                    {selectedActionData?.actions.map((action) => (
+                      <TableCell key={action}>{action}</TableCell>
+                    ))}
+                    <TableCell align="right">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {tableData
+                    .filter(entry => entry.actionType === selected)
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((row) => (
+                      <TableRow key={row.id}>
+                        <TableCell>{row.timestamp}</TableCell>
+                        <TableCell>{row.actionType}</TableCell>
+                        {selectedActionData?.actions.map((action) => (
+                          <TableCell key={action}>{row[action]}</TableCell>
+                        ))}
+                        <TableCell align="right">
+                          <Tooltip title="Delete entry">
+                            <IconButton 
+                              onClick={() => handleDelete(row.id)}
+                              color="error"
+                              size="small"
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25]}
+              component="div"
+              count={tableData.filter(entry => entry.actionType === selected).length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+            />
+          </Paper>
+        </Grid>
+      </Grid>
+    </Box>
   );
 };
+
 export default ActionComponent;
