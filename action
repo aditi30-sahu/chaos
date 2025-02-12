@@ -1,0 +1,154 @@
+import * as React from "react";
+import {
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Checkbox,
+  FormControl,
+  Typography,
+  Grid,
+  Stack,
+  Box,
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import styles from '../ActionComponent/ActionComponent.module.css'
+
+const names = [
+  {
+    key: 1,
+    displayName: "Add Stress",
+    actionName: "cloudActionStress",
+    actions: [
+      "subscription",
+      "resourceGroup",
+      "resource",
+      "timeout",
+      "cpu",
+      "io",
+      "memory",
+    ],
+  },
+  {
+    key: 2,
+    displayName: "Injecting latency on services",
+    actionName: "proxyActionLatency",
+    actions: [
+      "namespace",
+      "selector",
+      "port",
+      "port-type",
+      "url",
+      "type",
+      "secret",
+      "key",
+      "value",
+    ],
+  },
+  {
+    key: 3,
+    displayName: "Injecting timeout on services",
+    actionName: "proxyActionTimeout",
+    actions: [],
+  },
+  {
+    key: 4,
+    displayName: "Scaling down Pods",
+    actionName: "podScaleDown",
+    actions: ["server", "namespace", "selector", "status", "replicas"],
+  },
+  {
+    key: 5,
+    displayName: "Scaling up Pods",
+    actionName: "podaction",
+    actions: [],
+  },
+];
+
+const ActionComponent = () => {
+  const [selected, setSelected] = React.useState<string | null>(null);
+  const [formData, setFormData] = React.useState<{
+    [key: string]: { [key: string]: string };
+  }>({});
+
+  const handleToggle = (displayName: string) => () => {
+    setSelected(displayName === selected ? null : displayName);
+    if (displayName !== selected) {
+      setFormData(prevState => {
+        const newState = { ...prevState };
+        delete newState[displayName];
+        return newState;
+      });
+    }
+  };
+
+  const handleInputChange =
+    (displayName: string, action: string) =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const newFormData = { ...formData };
+      newFormData[displayName] = { [action]: event.target.value };
+      setFormData(newFormData);
+    };
+
+  return (
+    <div>
+      <FormControl className={styles.form}>
+        {names.map((name) => (
+          <Accordion key={name.key}>
+            <AccordionSummary
+              expandIcon={<ExpandMoreIcon />}
+              aria-controls={`panel-${name.key}-content`}
+              id={`panel-${name.key}-header`}
+            >
+              <Stack direction="row" alignItems="center">
+              <Checkbox
+                edge="start"
+                checked={name.displayName === selected}
+                tabIndex={-1}
+                disableRipple
+                inputProps={{
+                  "aria-labelledby": `checkbox-list-label-${name.key}`,
+                }}
+                onClick={handleToggle(name.displayName)}
+              />
+              <Typography>{name.displayName}</Typography>
+              </Stack>
+            </AccordionSummary>
+            <AccordionDetails>
+              {name.displayName === selected && (
+                <Grid container spacing={1}>
+                  {name.actions.map((action) => (
+                    <Grid item xs={6} key={action}>
+                      <Box display="flex" alignItems="center" >
+                        <Grid item xs={2}>
+                          <label
+                            htmlFor={`${name.displayName}-${action}`}
+                            className="mr-2"
+                          >
+                            {action}:
+                          </label>
+                        </Grid>
+                        <Grid item xs={8}>
+                          <input
+                            className= {`form-control ${styles.customInput} `}
+                            type="text"
+                            id={`${name.displayName}-${action}`}
+                            value={formData[name.displayName]?.[action] || ""}
+                            onChange={handleInputChange(
+                              name.displayName,
+                              action
+                            )}
+                          />
+                        </Grid>
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+              )}
+            </AccordionDetails>
+          </Accordion>
+        ))}
+      </FormControl>
+    </div>
+  );
+};
+export default ActionComponent;
